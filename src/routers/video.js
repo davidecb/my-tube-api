@@ -5,20 +5,22 @@ const auth = require('../middlewares/auth')
 const fs = require('fs')
 const router = new express.Router()
 
-const API_KEY = 'a623b1a6-caf3-43b3-b992-892c79fec7a9'
-/* 
-const storage = multer.diskStorage({
-    destination: 'D:/Documentos/ceiba-globant-node-course/my-tube-app/serverStorage',
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + req.user._id + '.' + file.mimetype.split('/')[1]
-        cb(null, file.fieldname + '-' + uniqueSuffix)
-    }
-}) */
+const storagePath = 'D:/Documentos/ceiba-globant-node-course/my-tube-app/serverStorage'
 
-const upload = multer({/* 
-    storage: storage, */
+const storage = multer.diskStorage({
+    destination: storagePath,
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + req.user._id
+        videoFilename = file.fieldname + '-' + uniqueSuffix
+        req.videoFilename = videoFilename
+        cb(null, videoFilename + '.' + file.mimetype.split('/')[1])
+    }
+})
+
+const upload = multer({
+    storage: storage,
     limits: {
-        fileSize: 1024 * 1024 * 16
+        fileSize: 1024 * 1024 * 100
     },
     fileFilter (req, file, cb) {
         if(! file.originalname.match(/\.(mp4)$/)) {
@@ -29,11 +31,23 @@ const upload = multer({/*
     }
 })
 
-router.post('/api/videos/upload', auth, upload.single('media'), async (req, res) => {    
+const uploadBuffer = multer({
+    limits: {
+        fileSize: 1024 * 1024 * 100
+    },
+    fileFilter (req, file, cb) {
+        if(! file.originalname.match(/\.(mp4)$/)) {
+           return cb(new Error('Please upload a MP4 video file')) 
+        }
+
+        cb(undefined, true)
+    }
+})
+
+router.post('/api/videos/uploadMedia', auth, upload.single('media'), async (req, res) => {    
     try {
         const data = req.body
-        console.log(req.file)
-        const {title, description, ...args} = data;
+        const { title, description, ...args } = data;
         const videos = await Video.find({ title })
 
         if (videos.length > 0) {
@@ -44,21 +58,32 @@ router.post('/api/videos/upload', auth, upload.single('media'), async (req, res)
         for (const key in args) {
             tags.push(args[key])
         }
-        const mediaBuffer = req.file.buffer
-        //const videoSrc = req.file.filename
+
+        const videoSrc = req.file.filename
 
         const video = new Video({
             title,
             description,
             videoType: req.file.mimetype,
-            mediaBuffer,
-            //videoSrc,
+            videoSrc,
             tags,
             owner: req.user._id
         })
-
         await video.save()
         res.status(201).send(video)
+    } catch (err) {
+        res.status(400).send({ error: err.message }) 
+    }   
+}, (error, req, res, next) => {
+    res.status(400).send({ error: error.message })
+})
+
+router.post('/api/videos/uploadBuffer', auth, uploadBuffer.single('media'), async (req, res) => {    
+    try {
+        console.log(req.file) 
+        const fileRoute = storagePath +'/' + req.body.videoFilename + '.txt'
+        fs.writeFileSync(fileRoute, req.file.buffer.toString('base64', 0, req.file.buffer.length))
+        res.status(201).send()
     } catch (err) {
         res.status(400).send({ error: err.message }) 
     }   
@@ -98,19 +123,11 @@ router.get('/api/myvideos', auth, async (req, res) => {
 router.get('/api/videos/:id', async (req, res) => {
     try {
         const video = await Video.findById(req.params.id)
-        const videoInfo = await video.getVideoBuffer()
-        res.status(200).send(videoInfo)
+        const bufferRoute = storagePath +'/' + video.videoSrc.split('.')[0] + '.txt'
+        const media = fs.readFileSync(bufferRoute, { encoding: 'utf-8' })
+        const mediaBuffer = media.toString('base64', 0, media.length)
+        res.status(200).send({ ...video._doc, mediaBuffer })
     } catch (err) {
-        res.status(500).send({ error: err.message })
-    }
-})
-
-router.get('/api/videos/download/:id', async (req, res) => {
-    try {
-        const video = await Video.findById(req.params.id)
-        res.status(200).send()
-    } catch (err) {
-        console.log(err)
         res.status(500).send({ error: err.message })
     }
 })

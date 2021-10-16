@@ -7,7 +7,7 @@ beforeEach(databaseInitConfig)
  
 test('Creating new video with mp4 media', async () => {
     const response = await request(app)
-            .post('/api/videos/upload')
+            .post('/api/videos/uploadMedia')
             .set('Authorization', `Bearer ${existingUserOne.tokens[0].token}`)
             .attach('media', 'tests/fixtures/mp4Media.mp4')
             .field({
@@ -28,7 +28,7 @@ test('Creating new video with mp4 media', async () => {
  
 test('Reject Creating new video with non-mp4 media', async () => {
     const response = await request(app)
-            .post('/api/videos/upload')
+            .post('/api/videos/uploadMedia')
             .set('Authorization', `Bearer ${existingUserOne.tokens[0].token}`)
             .attach('media', 'tests/fixtures/aviMedia.avi')
             .field({
@@ -41,24 +41,9 @@ test('Reject Creating new video with non-mp4 media', async () => {
     expect(video).toBeNull()
 })
  
-test('Reject Creating new video with large-mp4 media', async () => {
-    const response = await request(app)
-            .post('/api/videos/upload')
-            .set('Authorization', `Bearer ${existingUserOne.tokens[0].token}`)
-            .attach('media', 'tests/fixtures/mp4LargeMedia.mp4')
-            .field({
-                title: newRejectVideo.title,
-                description: newRejectVideo.description
-            })
-            .expect(400)
-    
-    const video = await Video.findById(response.body._id)
-    expect(video).toBeNull()
-})
-
 test('Reject Creating new video with existing Title', async () => {
     const response = await request(app)
-            .post('/api/videos/upload')
+            .post('/api/videos/uploadMedia')
             .set('Authorization', `Bearer ${existingUserOne.tokens[0].token}`)
             .attach('media', 'tests/fixtures/mp4Media.mp4')
             .field({
@@ -68,7 +53,7 @@ test('Reject Creating new video with existing Title', async () => {
     .expect(201)
 
     const responseExisting = await request(app)
-            .post('/api/videos/upload')
+            .post('/api/videos/uploadMedia')
             .set('Authorization', `Bearer ${existingUserOne.tokens[0].token}`)
             .attach('media', 'tests/fixtures/mp4Media.mp4')
             .field({
@@ -86,7 +71,7 @@ test('Reject Creating new video with existing Title', async () => {
 
 test('Getting All videos', async () => {
     await request(app)
-            .post('/api/videos/upload')
+            .post('/api/videos/uploadMedia')
             .set('Authorization', `Bearer ${existingUserOne.tokens[0].token}`)
             .attach('media', 'tests/fixtures/mp4Media.mp4')
             .field({
@@ -97,7 +82,7 @@ test('Getting All videos', async () => {
             .expect(201)
     
     await request(app)
-            .post('/api/videos/upload')
+            .post('/api/videos/uploadMedia')
             .set('Authorization', `Bearer ${existingUserOne.tokens[0].token}`)
             .attach('media', 'tests/fixtures/mp4Media.mp4')
             .field({
@@ -116,7 +101,7 @@ test('Getting All videos', async () => {
 
 test('Getting videos searching by tag sports', async () => {
     await request(app)
-            .post('/api/videos/upload')
+            .post('/api/videos/uploadMedia')
             .set('Authorization', `Bearer ${existingUserOne.tokens[0].token}`)
             .attach('media', 'tests/fixtures/mp4Media.mp4')
             .field({
@@ -127,7 +112,7 @@ test('Getting videos searching by tag sports', async () => {
             .expect(201)
     
     await request(app)
-            .post('/api/videos/upload')
+            .post('/api/videos/uploadMedia')
             .set('Authorization', `Bearer ${existingUserOne.tokens[0].token}`)
             .attach('media', 'tests/fixtures/mp4Media.mp4')
             .field({
@@ -149,7 +134,7 @@ test('Getting videos searching by tag sports', async () => {
 
 test('Getting videos searching by title', async () => {
     await request(app)
-            .post('/api/videos/upload')
+            .post('/api/videos/uploadMedia')
             .set('Authorization', `Bearer ${existingUserOne.tokens[0].token}`)
             .attach('media', 'tests/fixtures/mp4Media.mp4')
             .field({
@@ -160,7 +145,7 @@ test('Getting videos searching by title', async () => {
             .expect(201)
     
     await request(app)
-            .post('/api/videos/upload')
+            .post('/api/videos/uploadMedia')
             .set('Authorization', `Bearer ${existingUserOne.tokens[0].token}`)
             .attach('media', 'tests/fixtures/mp4Media.mp4')
             .field({
@@ -185,7 +170,7 @@ test('Getting videos searching by title', async () => {
 
 test('Getting video buffer', async () => {
     const uploadRes = await request(app)
-            .post('/api/videos/upload')
+            .post('/api/videos/uploadMedia')
             .set('Authorization', `Bearer ${existingUserOne.tokens[0].token}`)
             .attach('media', 'tests/fixtures/mp4Media.mp4')
             .field({
@@ -194,9 +179,19 @@ test('Getting video buffer', async () => {
                 science: 'science',
             })
             .expect(201)
-    
-    const video = await Video.findById(uploadRes.body._id)
-    expect(video.mediaBuffer).toEqual(expect.any(Buffer))  
+            
+    await request(app)
+            .post('/api/videos/uploadBuffer')
+            .set('Authorization', `Bearer ${existingUserOne.tokens[0].token}`)
+            .attach('media', 'tests/fixtures/mp4Media.mp4')
+            .field({
+                title: newMp4Video.title,
+                description: newMp4Video.description,
+                science: 'science',
+                videoFilename: uploadRes.body.videoSrc.split('.')[0]
+            })
+            .expect(201)
+      
     const url = `/api/videos/${uploadRes.body._id}`
     const response = await request(app)
             .get(url)
@@ -208,7 +203,7 @@ test('Getting video buffer', async () => {
 
 test('Valorating video by first time (like)', async () => {
     const uploadRes = await request(app)
-            .post('/api/videos/upload')
+            .post('/api/videos/uploadMedia')
             .set('Authorization', `Bearer ${existingUserOne.tokens[0].token}`)
             .attach('media', 'tests/fixtures/mp4Media.mp4')
             .field({
@@ -238,7 +233,7 @@ test('Valorating video by first time (like)', async () => {
 
 test('Valorating video by first time (dislike)', async () => {
     const uploadRes = await request(app)
-            .post('/api/videos/upload')
+            .post('/api/videos/uploadMedia')
             .set('Authorization', `Bearer ${existingUserOne.tokens[0].token}`)
             .attach('media', 'tests/fixtures/mp4Media.mp4')
             .field({
@@ -268,7 +263,7 @@ test('Valorating video by first time (dislike)', async () => {
 
 test('Valorating video by first time (like) no Auth', async () => {
     const uploadRes = await request(app)
-            .post('/api/videos/upload')
+            .post('/api/videos/uploadMedia')
             .set('Authorization', `Bearer ${existingUserOne.tokens[0].token}`)
             .attach('media', 'tests/fixtures/mp4Media.mp4')
             .field({
@@ -295,7 +290,7 @@ test('Valorating video by first time (like) no Auth', async () => {
 
 test('Valorating video by first time (dislike) no Auth', async () => {
     const uploadRes = await request(app)
-            .post('/api/videos/upload')
+            .post('/api/videos/uploadMedia')
             .set('Authorization', `Bearer ${existingUserOne.tokens[0].token}`)
             .attach('media', 'tests/fixtures/mp4Media.mp4')
             .field({
@@ -322,7 +317,7 @@ test('Valorating video by first time (dislike) no Auth', async () => {
 
 test('Valorating video by second time (like)', async () => {
     const uploadRes = await request(app)
-            .post('/api/videos/upload')
+            .post('/api/videos/uploadMedia')
             .set('Authorization', `Bearer ${existingUserOne.tokens[0].token}`)
             .attach('media', 'tests/fixtures/mp4Media.mp4')
             .field({
@@ -357,7 +352,7 @@ test('Valorating video by second time (like)', async () => {
 
 test('Valorating video by second time (dislike)', async () => {
     const uploadRes = await request(app)
-            .post('/api/videos/upload')
+            .post('/api/videos/uploadMedia')
             .set('Authorization', `Bearer ${existingUserOne.tokens[0].token}`)
             .attach('media', 'tests/fixtures/mp4Media.mp4')
             .field({
@@ -392,7 +387,7 @@ test('Valorating video by second time (dislike)', async () => {
 
 test('Valorating video by second time (like to dislike)', async () => {
     const uploadRes = await request(app)
-            .post('/api/videos/upload')
+            .post('/api/videos/uploadMedia')
             .set('Authorization', `Bearer ${existingUserOne.tokens[0].token}`)
             .attach('media', 'tests/fixtures/mp4Media.mp4')
             .field({
@@ -430,7 +425,7 @@ test('Valorating video by second time (like to dislike)', async () => {
 
 test('Valorating video by second time (dislike to like)', async () => {
     const uploadRes = await request(app)
-            .post('/api/videos/upload')
+            .post('/api/videos/uploadMedia')
             .set('Authorization', `Bearer ${existingUserOne.tokens[0].token}`)
             .attach('media', 'tests/fixtures/mp4Media.mp4')
             .field({
@@ -468,7 +463,7 @@ test('Valorating video by second time (dislike to like)', async () => {
 
 test('Deleting my video', async () => {
    const response = await request(app)
-           .post('/api/videos/upload')
+           .post('/api/videos/uploadMedia')
            .set('Authorization', `Bearer ${existingUserOne.tokens[0].token}`)
            .attach('media', 'tests/fixtures/mp4Media.mp4')
            .field({
@@ -493,7 +488,7 @@ test('Deleting my video', async () => {
 
 test('Deleting other user video', async () => {
    const response = await request(app)
-           .post('/api/videos/upload')
+           .post('/api/videos/uploadMedia')
            .set('Authorization', `Bearer ${existingUserOne.tokens[0].token}`)
            .attach('media', 'tests/fixtures/mp4Media.mp4')
            .field({
@@ -518,7 +513,7 @@ test('Deleting other user video', async () => {
 
 test('Deleting my video no Auth', async () => {
    const response = await request(app)
-           .post('/api/videos/upload')
+           .post('/api/videos/uploadMedia')
            .set('Authorization', `Bearer ${existingUserOne.tokens[0].token}`)
            .attach('media', 'tests/fixtures/mp4Media.mp4')
            .field({
@@ -539,24 +534,3 @@ test('Deleting my video no Auth', async () => {
    const videoLater = await Video.findById(response.body._id)
    expect(videoLater).not.toBeNull()
 })
-
-/*
-test('Deleting my tasks', async () => {
-    await request(app)
-            .delete(`/tasks/${taskOneId}`)
-            .set('Authorization', `Bearer ${existingUser.tokens[0].token}`)
-            .send()
-            .expect(200)
-    const task = await Task.findById(taskOneId)
-    expect(task).toBeNull()
-})
-
-test('Deleting other user tasks', async () => {
-    await request(app)
-            .delete(`/tasks/${taskThreeId}`)
-            .set('Authorization', `Bearer ${existingUser.tokens[0].token}`)
-            .send()
-            .expect(404)
-    const task = await Task.findById(taskThreeId)
-    expect(task).not.toBeNull()
-}) */

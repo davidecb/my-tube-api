@@ -10,9 +10,6 @@ const videoSchema = new mongoose.Schema({
         type: String,
         trim: true
     },
-    mediaBuffer: {
-        type: Buffer
-    },
     videoSrc: {
         type: String
     },
@@ -42,9 +39,7 @@ const videoSchema = new mongoose.Schema({
 videoSchema.methods.toJSON = function () {
     const video = this
     const videoObject = video.toObject()
-
-    delete videoObject.mediaBuffer
-    delete videoObject.videoSrc
+    
     delete videoObject.videoType
     delete videoObject.__v
     delete videoObject.updatedAt
@@ -59,7 +54,7 @@ videoSchema.methods.getVideoBuffer = function () {
     delete videoObject.__v    
     delete videoObject.updatedAt
     delete videoObject.createdAt
-    
+
     return videoObject
 }
 
